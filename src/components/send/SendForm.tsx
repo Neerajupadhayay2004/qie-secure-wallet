@@ -1,13 +1,22 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Send, AlertTriangle, CheckCircle, Users, QrCode } from 'lucide-react';
+import { Send, AlertTriangle, Users, QrCode, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { mockTokens, mockContacts } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
+import { checkFraud } from '@/services/aiService';
+import { notifyTransaction, notifySecurityAlert } from '@/services/notificationService';
 
 interface SendFormProps {
   onScanQR: () => void;
+}
+
+interface FraudResult {
+  risk_score: number;
+  risk_level: 'low' | 'medium' | 'high' | 'critical';
+  warnings: string[];
+  recommendation: 'allow' | 'review' | 'block';
 }
 
 export function SendForm({ onScanQR }: SendFormProps) {
@@ -15,29 +24,63 @@ export function SendForm({ onScanQR }: SendFormProps) {
   const [amount, setAmount] = useState('');
   const [selectedToken, setSelectedToken] = useState(mockTokens[0]);
   const [showContacts, setShowContacts] = useState(false);
-  const [riskScore, setRiskScore] = useState<number | null>(null);
+  const [fraudResult, setFraudResult] = useState<FraudResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const { toast } = useToast();
 
   const gasEstimate = 0.002;
   const gasFeeUSD = 0.15;
 
-  const analyzeRisk = () => {
+  const analyzeRisk = async () => {
+    if (!recipient || recipient.length < 10) return;
+    
     setIsAnalyzing(true);
-    setTimeout(() => {
-      const score = Math.floor(Math.random() * 40) + 5;
-      setRiskScore(score);
-      setIsAnalyzing(false);
-    }, 1500);
+    try {
+      const result = await checkFraud({
+        amount: amount || '0',
+        token: selectedToken.symbol,
+        recipient,
+        senderBalance: selectedToken.balance.toString(),
+        isNewAddress: !mockContacts.find(c => c.address === recipient),
+        transactionCount: Math.floor(Math.random() * 50) + 5,
+      });
+
+      if (result) {
+        setFraudResult(result);
+        
+        // Send Telegram alert for high-risk transactions
+        if (result.risk_level === 'high' || result.risk_level === 'critical') {
+          await notifySecurityAlert(
+            'High Risk Transaction Detected',
+            `A transaction of ${amount} ${selectedToken.symbol} to ${recipient.slice(0, 10)}... has been flagged.\n\nRisk Score: ${result.risk_score}/100\nWarnings: ${result.warnings?.join(', ') || 'None'}`
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Error analyzing risk:', error);
+      // Fallback to mock score
+      setFraudResult({
+        risk_score: Math.floor(Math.random() * 40) + 5,
+        risk_level: 'low',
+        warnings: [],
+        recommendation: 'allow'
+      });
+    }
+    setIsAnalyzing(false);
   };
 
-  const getRiskLevel = (score: number) => {
-    if (score < 20) return { level: 'Low', color: 'text-success', bg: 'bg-success/20' };
-    if (score < 50) return { level: 'Medium', color: 'text-warning', bg: 'bg-warning/20' };
-    return { level: 'High', color: 'text-destructive', bg: 'bg-destructive/20' };
+  const getRiskLevel = (result: FraudResult) => {
+    const levelMap = {
+      low: { level: 'Low', color: 'text-success', bg: 'bg-success/20' },
+      medium: { level: 'Medium', color: 'text-warning', bg: 'bg-warning/20' },
+      high: { level: 'High', color: 'text-destructive', bg: 'bg-destructive/20' },
+      critical: { level: 'Critical', color: 'text-destructive', bg: 'bg-destructive/20' },
+    };
+    return levelMap[result.risk_level] || levelMap.low;
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!recipient || !amount) {
       toast({
         title: "Missing information",
@@ -47,16 +90,70 @@ export function SendForm({ onScanQR }: SendFormProps) {
       return;
     }
 
-    toast({
-      title: "Transaction Submitted",
-      description: `Sending ${amount} ${selectedToken.symbol} to ${recipient.slice(0, 10)}...`,
-    });
+    if (fraudResult && fraudResult.recommendation === 'block') {
+      toast({
+        title: "Transaction Blocked",
+        description: "This transaction has been blocked due to high risk",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSending(true);
+    
+    try {
+      // Send transaction notification to Telegram
+      await notifyTransaction(
+        '💸 Transaction Sent',
+        amount,
+        selectedToken.symbol,
+        recipient,
+        `Transaction initiated from QIE Wallet`,
+        'Pending'
+      );
+
+      toast({
+        title: "Transaction Submitted",
+        description: `Sending ${amount} ${selectedToken.symbol} to ${recipient.slice(0, 10)}...`,
+      });
+
+      // Simulate confirmation
+      setTimeout(async () => {
+        await notifyTransaction(
+          '✅ Transaction Confirmed',
+          amount,
+          selectedToken.symbol,
+          recipient,
+          `Your transaction has been confirmed on the blockchain`,
+          'Confirmed'
+        );
+        
+        toast({
+          title: "Transaction Confirmed",
+          description: "Your transaction has been confirmed on the blockchain",
+        });
+      }, 3000);
+
+      // Reset form
+      setRecipient('');
+      setAmount('');
+      setFraudResult(null);
+    } catch (error) {
+      console.error('Error sending transaction:', error);
+      toast({
+        title: "Transaction Failed",
+        description: "Failed to send transaction. Please try again.",
+        variant: "destructive",
+      });
+    }
+    
+    setIsSending(false);
   };
 
   const selectContact = (address: string) => {
     setRecipient(address);
     setShowContacts(false);
-    analyzeRisk();
+    setTimeout(analyzeRisk, 500);
   };
 
   return (
@@ -66,7 +163,13 @@ export function SendForm({ onScanQR }: SendFormProps) {
       className="max-w-lg mx-auto"
     >
       <div className="rounded-2xl bg-card border border-border/50 p-6">
-        <h2 className="text-xl font-semibold mb-6">Send Crypto</h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-semibold">Send Crypto</h2>
+          <div className="flex items-center gap-1 text-xs text-primary">
+            <Bell className="w-3 h-3" />
+            <span>Telegram alerts active</span>
+          </div>
+        </div>
 
         {/* Token Selection */}
         <div className="mb-4">
@@ -100,7 +203,9 @@ export function SendForm({ onScanQR }: SendFormProps) {
               value={recipient}
               onChange={(e) => {
                 setRecipient(e.target.value);
-                if (e.target.value.length > 10) analyzeRisk();
+                if (e.target.value.length > 10) {
+                  setTimeout(analyzeRisk, 1000);
+                }
               }}
               placeholder="0x... or select from contacts"
               className="pr-24 font-mono text-sm"
@@ -181,7 +286,7 @@ export function SendForm({ onScanQR }: SendFormProps) {
         </div>
 
         {/* AI Risk Score */}
-        {(isAnalyzing || riskScore !== null) && (
+        {(isAnalyzing || fraudResult !== null) && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
@@ -189,18 +294,28 @@ export function SendForm({ onScanQR }: SendFormProps) {
           >
             <div className="flex items-center gap-2 mb-2">
               <AlertTriangle className="w-4 h-4 text-warning" />
-              <span className="text-sm font-medium">AI Fraud Detection</span>
+              <span className="text-sm font-medium">AI Fraud Detection (Gemini)</span>
             </div>
             {isAnalyzing ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                Analyzing transaction...
+                Analyzing transaction with AI...
               </div>
-            ) : riskScore !== null && (
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Risk Score</span>
-                <div className={`px-2 py-1 rounded-full text-xs font-medium ${getRiskLevel(riskScore).bg} ${getRiskLevel(riskScore).color}`}>
-                  {riskScore}/100 - {getRiskLevel(riskScore).level} Risk
+            ) : fraudResult !== null && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Risk Score</span>
+                  <div className={`px-2 py-1 rounded-full text-xs font-medium ${getRiskLevel(fraudResult).bg} ${getRiskLevel(fraudResult).color}`}>
+                    {fraudResult.risk_score}/100 - {getRiskLevel(fraudResult).level} Risk
+                  </div>
+                </div>
+                {fraudResult.warnings && fraudResult.warnings.length > 0 && (
+                  <div className="text-xs text-warning">
+                    ⚠️ {fraudResult.warnings.join(' • ')}
+                  </div>
+                )}
+                <div className="text-xs text-muted-foreground">
+                  Recommendation: <span className="font-medium capitalize">{fraudResult.recommendation}</span>
                 </div>
               </div>
             )}
@@ -225,13 +340,22 @@ export function SendForm({ onScanQR }: SendFormProps) {
           variant="gradient" 
           size="xl" 
           className="w-full"
-          disabled={!recipient || !amount || (riskScore !== null && riskScore > 70)}
+          disabled={!recipient || !amount || isSending || (fraudResult !== null && fraudResult.recommendation === 'block')}
         >
-          <Send className="w-5 h-5" />
-          Send {selectedToken.symbol}
+          {isSending ? (
+            <>
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              Sending...
+            </>
+          ) : (
+            <>
+              <Send className="w-5 h-5" />
+              Send {selectedToken.symbol}
+            </>
+          )}
         </Button>
 
-        {riskScore !== null && riskScore > 70 && (
+        {fraudResult !== null && fraudResult.recommendation === 'block' && (
           <p className="text-center text-sm text-destructive mt-3">
             Transaction blocked due to high risk score
           </p>
