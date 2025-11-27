@@ -1,28 +1,35 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Paperclip, Image, Smile, MoreVertical, Check, CheckCheck } from 'lucide-react';
+import { Send, Paperclip, Image, Bot, MoreVertical, Check, CheckCheck, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { mockContacts } from '@/data/mockData';
 import { format } from 'date-fns';
+import { chatWithAI, getPricePrediction } from '@/services/aiService';
 
 interface Message {
   id: string;
   content: string;
-  sender: 'me' | 'other';
+  sender: 'me' | 'other' | 'ai';
   timestamp: Date;
   status: 'sent' | 'delivered' | 'read';
+  isAI?: boolean;
 }
 
 export function ChatInterface() {
-  const [selectedContact, setSelectedContact] = useState(mockContacts[0]);
+  const [selectedContact, setSelectedContact] = useState<typeof mockContacts[0] | 'ai'>('ai');
   const [messages, setMessages] = useState<Message[]>([
-    { id: '1', content: 'Hey! I just sent you the payment for the logo design.', sender: 'other', timestamp: new Date(Date.now() - 1000 * 60 * 30), status: 'read' },
-    { id: '2', content: 'Thanks! I received it. Working on the final revisions now.', sender: 'me', timestamp: new Date(Date.now() - 1000 * 60 * 25), status: 'read' },
-    { id: '3', content: 'Great! Can you also add a dark mode version?', sender: 'other', timestamp: new Date(Date.now() - 1000 * 60 * 20), status: 'read' },
-    { id: '4', content: 'Sure, I will include that in the final delivery. Should be ready by tomorrow.', sender: 'me', timestamp: new Date(Date.now() - 1000 * 60 * 15), status: 'delivered' },
+    { 
+      id: '0', 
+      content: "👋 Hi! I'm your QIE Wallet AI assistant powered by Gemini. I can help you with:\n\n• Understanding crypto transactions\n• Security tips and best practices\n• Token information (QIE, USDT, USDC, DAI)\n• Escrow and smart contracts\n• Market insights\n\nHow can I assist you today?", 
+      sender: 'ai', 
+      timestamp: new Date(Date.now() - 1000 * 60), 
+      status: 'read',
+      isAI: true 
+    },
   ]);
   const [inputValue, setInputValue] = useState('');
+  const [isAITyping, setIsAITyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -33,10 +40,10 @@ export function ChatInterface() {
     scrollToBottom();
   }, [messages]);
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (!inputValue.trim()) return;
 
-    const newMessage: Message = {
+    const userMessage: Message = {
       id: Date.now().toString(),
       content: inputValue,
       sender: 'me',
@@ -44,13 +51,65 @@ export function ChatInterface() {
       status: 'sent',
     };
 
-    setMessages([...messages, newMessage]);
+    setMessages(prev => [...prev, userMessage]);
+    const messageText = inputValue;
     setInputValue('');
 
-    // Simulate status updates
+    // Update status
     setTimeout(() => {
-      setMessages(prev => prev.map(m => m.id === newMessage.id ? { ...m, status: 'delivered' } : m));
-    }, 1000);
+      setMessages(prev => prev.map(m => m.id === userMessage.id ? { ...m, status: 'delivered' } : m));
+    }, 500);
+
+    // If AI assistant is selected, get AI response
+    if (selectedContact === 'ai') {
+      setIsAITyping(true);
+      
+      try {
+        let response: string | null = null;
+        
+        // Check for price-related queries
+        if (messageText.toLowerCase().includes('price') || messageText.toLowerCase().includes('market')) {
+          const tokenMatch = messageText.match(/\b(QIE|USDT|USDC|DAI|BTC|ETH)\b/i);
+          if (tokenMatch) {
+            response = await getPricePrediction(tokenMatch[1].toUpperCase());
+          }
+        }
+        
+        // Default to chat
+        if (!response) {
+          response = await chatWithAI(messageText);
+        }
+
+        const aiMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          content: response || "I apologize, but I'm having trouble processing your request. Please try again.",
+          sender: 'ai',
+          timestamp: new Date(),
+          status: 'read',
+          isAI: true,
+        };
+
+        setMessages(prev => [...prev, aiMessage]);
+      } catch (error) {
+        console.error('AI chat error:', error);
+        const errorMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          content: "I'm experiencing technical difficulties. Please try again in a moment.",
+          sender: 'ai',
+          timestamp: new Date(),
+          status: 'read',
+          isAI: true,
+        };
+        setMessages(prev => [...prev, errorMessage]);
+      }
+      
+      setIsAITyping(false);
+    } else {
+      // Simulate peer response for demo
+      setTimeout(() => {
+        setMessages(prev => prev.map(m => m.id === userMessage.id ? { ...m, status: 'read' } : m));
+      }, 2000);
+    }
   };
 
   const getStatusIcon = (status: string) => {
@@ -61,6 +120,13 @@ export function ChatInterface() {
       default: return null;
     }
   };
+
+  const quickPrompts = [
+    "What is QIE token?",
+    "How do escrow payments work?",
+    "Security tips for my wallet",
+    "Explain gas fees",
+  ];
 
   return (
     <motion.div
@@ -74,12 +140,37 @@ export function ChatInterface() {
           <h3 className="font-semibold">Messages</h3>
         </div>
         <div className="flex-1 overflow-y-auto">
+          {/* AI Assistant */}
+          <button
+            onClick={() => setSelectedContact('ai')}
+            className={`w-full p-4 flex items-center gap-3 hover:bg-secondary/50 transition-colors ${
+              selectedContact === 'ai' ? 'bg-secondary/50' : ''
+            }`}
+          >
+            <div className="relative">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                <Bot className="w-5 h-5 text-white" />
+              </div>
+              <span className="absolute bottom-0 right-0 w-3 h-3 bg-success rounded-full border-2 border-card" />
+            </div>
+            <div className="flex-1 text-left">
+              <div className="flex items-center gap-1">
+                <p className="font-medium text-sm">AI Assistant</p>
+                <Sparkles className="w-3 h-3 text-primary" />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Powered by Gemini
+              </p>
+            </div>
+          </button>
+          
+          {/* Contacts */}
           {mockContacts.map((contact) => (
             <button
               key={contact.id}
               onClick={() => setSelectedContact(contact)}
               className={`w-full p-4 flex items-center gap-3 hover:bg-secondary/50 transition-colors ${
-                selectedContact.id === contact.id ? 'bg-secondary/50' : ''
+                selectedContact !== 'ai' && selectedContact.id === contact.id ? 'bg-secondary/50' : ''
               }`}
             >
               <div className="relative">
@@ -104,13 +195,30 @@ export function ChatInterface() {
         {/* Header */}
         <div className="p-4 border-b border-border/50 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-sm font-medium">
-              {selectedContact.avatar}
-            </div>
-            <div>
-              <p className="font-medium">{selectedContact.name}</p>
-              <p className="text-xs text-success">Online</p>
-            </div>
+            {selectedContact === 'ai' ? (
+              <>
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                  <Bot className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1">
+                    <p className="font-medium">AI Assistant</p>
+                    <Sparkles className="w-3 h-3 text-primary" />
+                  </div>
+                  <p className="text-xs text-success">Always available</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-sm font-medium">
+                  {selectedContact.avatar}
+                </div>
+                <div>
+                  <p className="font-medium">{selectedContact.name}</p>
+                  <p className="text-xs text-success">Online</p>
+                </div>
+              </>
+            )}
           </div>
           <Button variant="ghost" size="icon">
             <MoreVertical className="w-5 h-5" />
@@ -132,9 +240,17 @@ export function ChatInterface() {
                   <div className={`p-3 rounded-2xl ${
                     message.sender === 'me'
                       ? 'bg-primary text-primary-foreground rounded-br-md'
-                      : 'bg-secondary text-foreground rounded-bl-md'
+                      : message.isAI 
+                        ? 'bg-gradient-to-br from-primary/20 to-accent/20 border border-primary/30 text-foreground rounded-bl-md'
+                        : 'bg-secondary text-foreground rounded-bl-md'
                   }`}>
-                    <p className="text-sm">{message.content}</p>
+                    {message.isAI && (
+                      <div className="flex items-center gap-1 mb-2 text-xs text-primary">
+                        <Sparkles className="w-3 h-3" />
+                        <span>AI Response</span>
+                      </div>
+                    )}
+                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                   </div>
                   <div className={`flex items-center gap-1 mt-1 ${message.sender === 'me' ? 'justify-end' : ''}`}>
                     <span className="text-xs text-muted-foreground">
@@ -145,9 +261,46 @@ export function ChatInterface() {
                 </div>
               </motion.div>
             ))}
+            
+            {isAITyping && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex justify-start"
+              >
+                <div className="bg-gradient-to-br from-primary/20 to-accent/20 border border-primary/30 p-3 rounded-2xl rounded-bl-md">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-primary animate-pulse" />
+                    <span className="text-sm text-muted-foreground">AI is thinking...</span>
+                    <div className="flex gap-1">
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
           </AnimatePresence>
           <div ref={messagesEndRef} />
         </div>
+
+        {/* Quick Prompts */}
+        {selectedContact === 'ai' && messages.length <= 2 && (
+          <div className="px-4 pb-2">
+            <div className="flex flex-wrap gap-2">
+              {quickPrompts.map((prompt, i) => (
+                <button
+                  key={i}
+                  onClick={() => setInputValue(prompt)}
+                  className="px-3 py-1.5 text-xs bg-secondary/50 hover:bg-secondary rounded-full transition-colors"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Input */}
         <div className="p-4 border-t border-border/50">
@@ -161,19 +314,17 @@ export function ChatInterface() {
             <Input
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder="Type a message..."
+              onKeyPress={(e) => e.key === 'Enter' && !isAITyping && sendMessage()}
+              placeholder={selectedContact === 'ai' ? "Ask the AI assistant..." : "Type a message..."}
               className="flex-1"
+              disabled={isAITyping}
             />
-            <Button variant="ghost" size="icon" className="shrink-0">
-              <Smile className="w-5 h-5" />
-            </Button>
             <Button 
               onClick={sendMessage}
               variant="gradient" 
               size="icon" 
               className="shrink-0"
-              disabled={!inputValue.trim()}
+              disabled={!inputValue.trim() || isAITyping}
             >
               <Send className="w-4 h-4" />
             </Button>
