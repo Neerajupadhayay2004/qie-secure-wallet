@@ -16,16 +16,16 @@ serve(async (req) => {
   }
 
   try {
-    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
-    if (!GEMINI_API_KEY) {
-      throw new Error('GEMINI_API_KEY is not configured');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY is not configured');
     }
 
     const { action, data }: AIRequest = await req.json();
     
-    let prompt = '';
     let systemPrompt = '';
+    let userPrompt = '';
 
     switch (action) {
       case 'fraud_check':
@@ -34,9 +34,10 @@ serve(async (req) => {
         Consider factors like: unusual amounts, new addresses, rapid successive transactions, 
         amounts that are round numbers, transactions to known scam addresses.
         Return a JSON response with: risk_score (0-100), risk_level (low/medium/high/critical), 
-        warnings (array of strings), and recommendation (allow/review/block).`;
+        warnings (array of strings), and recommendation (allow/review/block).
+        IMPORTANT: Return ONLY valid JSON, no markdown or extra text.`;
         
-        prompt = `Analyze this transaction for fraud:
+        userPrompt = `Analyze this transaction for fraud:
         Amount: ${data.amount} ${data.token}
         Recipient: ${data.recipient}
         Sender Balance: ${data.senderBalance}
@@ -49,7 +50,7 @@ serve(async (req) => {
         systemPrompt = `You are a cryptocurrency transaction analyst. Provide insights about transactions 
         including gas optimization, timing suggestions, and market conditions.`;
         
-        prompt = `Analyze this transaction:
+        userPrompt = `Analyze this transaction:
         ${JSON.stringify(data, null, 2)}
         
         Provide insights on: optimal timing, gas fees, and any recommendations.`;
@@ -59,7 +60,7 @@ serve(async (req) => {
         systemPrompt = `You are a cryptocurrency market analyst. Provide brief, realistic market insights.
         Always include disclaimers about market volatility and that this is not financial advice.`;
         
-        prompt = `Provide a brief market analysis for ${data.token}. 
+        userPrompt = `Provide a brief market analysis for ${data.token}. 
         Current price trends and general sentiment. Keep it concise.`;
         break;
 
@@ -74,49 +75,48 @@ serve(async (req) => {
         
         Be helpful, concise, and security-conscious. Never ask for private keys or seed phrases.`;
         
-        prompt = data.message || data.prompt;
+        userPrompt = data.message || data.prompt;
         break;
     }
 
-    // Call Gemini API
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-    
-    const response = await fetch(geminiUrl, {
+    // Call Lovable AI Gateway
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              { text: systemPrompt + '\n\n' + prompt }
-            ]
-          }
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
         ],
-        generationConfig: {
-          temperature: action === 'fraud_check' ? 0.1 : 0.7,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 1024,
-        },
-        safetySettings: [
-          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-          { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-        ],
+        temperature: action === 'fraud_check' ? 0.1 : 0.7,
+        max_tokens: 1024,
       }),
     });
 
-    const result = await response.json();
-    
-    if (result.error) {
-      console.error('Gemini API error:', result.error);
-      throw new Error(result.error.message || 'Gemini API error');
+    if (!response.ok) {
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ error: 'Rate limit exceeded, please try again later.' }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: 'Payment required, please add credits.' }), {
+          status: 402,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const errorText = await response.text();
+      console.error('AI Gateway error:', response.status, errorText);
+      throw new Error(`AI Gateway error: ${response.status}`);
     }
 
-    const aiResponse = result.candidates?.[0]?.content?.parts?.[0]?.text || 'No response generated';
+    const result = await response.json();
+    const aiResponse = result.choices?.[0]?.message?.content || 'No response generated';
     
     // For fraud check, try to parse JSON response
     let parsedResponse = aiResponse;
