@@ -1,61 +1,121 @@
-# Welcome to your Lovable project
+# **DeFi Without Borders**
 
-## Project info
+Borderless financial applications with instant, ultra-low fees.
+Built to empower users with fast, secure, and globally accessible decentralized finance.
 
-**URL**: https://qie.netlify.app/
+---
 
-## How can I edit this code?
+## 🚀 **Project Overview**
 
-There are several ways of editing your application.
+**DeFi Without Borders** is a modern decentralized finance (DeFi) web application designed with a clean UI and smooth user experience.
+The platform aims to provide borderless financial solutions such as:
 
+* ⚡ Ultra-low-fee transactions
+* 🌍 Cross-border accessibility
+* 🔒 Secure smart-contract interactions
+* 📱 Modern UI using React + Tailwind + shadcn-ui
+* ⚙️ Fast Vite-powered build setup
 
-**Use your preferred IDE**
+Live Website: **[https://qie.netlify.app/](https://qie.netlify.app/)**
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+---
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
+## 🛠️ **Tech Stack**
 
 This project is built with:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+* **Vite** – for lightning-fast development
+* **TypeScript** – for strong typing and cleaner code
+* **React** – for building UI components
+* **shadcn-ui** – for beautifully designed UI components
+* **Tailwind CSS** – for modern, responsive styling
 
+---
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## 📦 **How to Edit or Develop This Project**
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+You can edit the project in multiple ways: locally, on GitHub, or using Codespaces.
+
+---
+
+### ✔️ **Edit Locally in Your IDE**
+
+> **Prerequisite:** Node.js + npm installed
+> You can install using nvm: [https://github.com/nvm-sh/nvm#installing-and-updating](https://github.com/nvm-sh/nvm#installing-and-updating)
+
+**Steps:**
+
+```sh
+# Step 1: Clone the repository using your Git URL
+git clone <https://github.com/Neerajupadhayay2004/qie-secure-wallet/edit/main>
+
+# Step 2: Go into the project folder
+cd <qie-secure-wallet>
+
+# Step 3: Install dependencies
+npm i
+
+# Step 4: Start the development server
+npm run dev
+```
+
+---
+
+### ✔️ **Edit Directly on GitHub**
+
+1. Open the required file on GitHub
+2. Click the pencil ✏️ icon (Edit)
+3. Make changes
+4. Commit and push
+
+Your changes will automatically reflect in the project.
+
+---
+
+### ✔️ **Use GitHub Codespaces (Cloud IDE)**
+
+1. Go to your repo
+2. Click **Code → Codespaces**
+3. Select **New Codespace**
+4. Wait for the online editor to load
+5. Make edits and commit changes
+
+---
+
+## 🌐 **Connecting a Custom Domain (Netlify)**
+
+To add your own domain:
+
+1. Go to **Project → Settings → Domains**
+2. Click **Connect Domain**
+3. Add your domain name
+4. Configure DNS as shown by Netlify
+
+## 📁 **Folder Structure**
+
+```
+project/
+├─ src/
+│  ├─ components/
+│  ├─ pages/
+│  ├─ hooks/
+│  └─ styles/
+├─ public/
+├─ index.html
+├─ package.json
+└─ vite.config.ts
+```
+
+---
+
+## 🤝 **Contributions**
+
+Pull requests are welcome!
+Feel free to open issues for bugs, improvements, or feature requests.
+
+---
+
+## 📜 **License**
+
+This project is open-source and available under the MIT License.
+
