@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+pymongo
+python-dotenv
+passlib[bcrypt]
+web3
+requests
+flask
+pyjwt

@@ -1,0 +1,10 @@
+project_id = "uchewqqlpziwvufmzklx"
+
+[functions.send-telegram]
+verify_jwt = false
+
+[functions.ai-assistant]
+verify_jwt = false
+
+[functions.python-api]
+verify_jwt = false
