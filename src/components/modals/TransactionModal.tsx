@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useSoundEffects } from '@/hooks/useSoundEffects';
 
 export type TransactionStatus = 'pending' | 'success' | 'failed';
 
@@ -34,6 +35,7 @@ export function TransactionModal({
   errorMessage = 'Transaction failed. Please try again.',
 }: TransactionModalProps) {
   const [copied, setCopied] = useState(false);
+  const { play } = useSoundEffects();
 
   const fireConfetti = useCallback(() => {
     const count = 200;
@@ -81,10 +83,16 @@ export function TransactionModal({
 
   useEffect(() => {
     if (isOpen && status === 'success') {
-      const timer = setTimeout(fireConfetti, 300);
+      const timer = setTimeout(() => {
+        fireConfetti();
+        play('success');
+      }, 300);
+      return () => clearTimeout(timer);
+    } else if (isOpen && status === 'failed') {
+      const timer = setTimeout(() => play('error'), 300);
       return () => clearTimeout(timer);
     }
-  }, [isOpen, status, fireConfetti]);
+  }, [isOpen, status, fireConfetti, play]);
 
   const copyTxHash = () => {
     navigator.clipboard.writeText(txHash);

@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, X, CheckCircle, AlertTriangle, Info } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { useSoundEffects } from '@/hooks/useSoundEffects';
 
 const notifications = [
   {
@@ -30,6 +31,7 @@ const notifications = [
 export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
   const [hasUnread, setHasUnread] = useState(true);
+  const { play } = useSoundEffects();
 
   const getIcon = (type: string) => {
     switch (type) {
@@ -42,15 +44,20 @@ export function NotificationBell() {
     }
   };
 
+  const handleOpen = () => {
+    play('notification');
+    setIsOpen(!isOpen);
+    if (!isOpen) {
+      setHasUnread(false);
+    }
+  };
+
   return (
     <div className="relative">
       <motion.button
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
-        onClick={() => {
-          setIsOpen(!isOpen);
-          setHasUnread(false);
-        }}
+        onClick={handleOpen}
         className="relative p-2 rounded-xl bg-card border border-border/50 hover:border-primary/30 transition-colors"
       >
         <Bell className="w-5 h-5" />
