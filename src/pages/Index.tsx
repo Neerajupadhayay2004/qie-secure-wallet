@@ -15,6 +15,10 @@ import { EscrowList } from '@/components/escrow/EscrowList';
 import { ChatInterface } from '@/components/chat/ChatInterface';
 import { AnalyticsDashboard } from '@/components/analytics/AnalyticsDashboard';
 import { WalletView } from '@/components/wallet/WalletView';
+import { MarketTicker } from '@/components/dashboard/MarketTicker';
+import { LiveStats } from '@/components/dashboard/LiveStats';
+import { FloatingParticles } from '@/components/dashboard/FloatingParticles';
+import { WelcomeBanner } from '@/components/dashboard/WelcomeBanner';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -38,6 +42,9 @@ const Index = () => {
       case 'dashboard':
         return (
           <div className="space-y-6 animate-slide-up">
+            <WelcomeBanner onGetStarted={() => setActiveTab('send')} />
+            <MarketTicker />
+            <LiveStats />
             <PortfolioCard />
             <QuickActions onAction={handleQuickAction} />
             <div className="grid lg:grid-cols-2 gap-6">
@@ -73,10 +80,11 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative">
+      <FloatingParticles />
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
       
-      <div className="lg:pl-64">
+      <div className="lg:pl-64 relative z-10">
         <Header isConnected={isConnected} onConnect={handleConnect} />
         
         <main className="p-4 lg:p-6">
