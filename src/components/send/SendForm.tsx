@@ -7,6 +7,7 @@ import { mockTokens, mockContacts } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
 import { checkFraud } from '@/services/aiService';
 import { notifyTransaction, notifySecurityAlert } from '@/services/notificationService';
+import { TransactionModal, TransactionStatus } from '@/components/modals/TransactionModal';
 
 interface SendFormProps {
   onScanQR: () => void;
@@ -27,6 +28,9 @@ export function SendForm({ onScanQR }: SendFormProps) {
   const [fraudResult, setFraudResult] = useState<FraudResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [showTxModal, setShowTxModal] = useState(false);
+  const [txStatus, setTxStatus] = useState<TransactionStatus>('pending');
+  const [txHash, setTxHash] = useState('');
   const { toast } = useToast();
 
   const gasEstimate = 0.002;
@@ -100,6 +104,8 @@ export function SendForm({ onScanQR }: SendFormProps) {
     }
 
     setIsSending(true);
+    setShowTxModal(true);
+    setTxStatus('pending');
     
     try {
       // Send transaction notification to Telegram
@@ -112,13 +118,17 @@ export function SendForm({ onScanQR }: SendFormProps) {
         'Pending'
       );
 
-      toast({
-        title: "Transaction Submitted",
-        description: `Sending ${amount} ${selectedToken.symbol} to ${recipient.slice(0, 10)}...`,
-      });
+      // Simulate blockchain confirmation
+      await new Promise(resolve => setTimeout(resolve, 2500));
+      
+      // Generate transaction hash
+      const generatedTxHash = '0x' + Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2);
+      setTxHash(generatedTxHash);
 
-      // Simulate confirmation
-      setTimeout(async () => {
+      // Randomly succeed or fail (90% success rate for demo)
+      if (Math.random() > 0.1) {
+        setTxStatus('success');
+        
         await notifyTransaction(
           '✅ Transaction Confirmed',
           amount,
@@ -132,14 +142,22 @@ export function SendForm({ onScanQR }: SendFormProps) {
           title: "Transaction Confirmed",
           description: "Your transaction has been confirmed on the blockchain",
         });
-      }, 3000);
 
-      // Reset form
-      setRecipient('');
-      setAmount('');
-      setFraudResult(null);
+        // Reset form after success
+        setRecipient('');
+        setAmount('');
+        setFraudResult(null);
+      } else {
+        setTxStatus('failed');
+        toast({
+          title: "Transaction Failed",
+          description: "Transaction could not be completed. Please try again.",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       console.error('Error sending transaction:', error);
+      setTxStatus('failed');
       toast({
         title: "Transaction Failed",
         description: "Failed to send transaction. Please try again.",
@@ -148,6 +166,10 @@ export function SendForm({ onScanQR }: SendFormProps) {
     }
     
     setIsSending(false);
+  };
+
+  const closeTxModal = () => {
+    setShowTxModal(false);
   };
 
   const selectContact = (address: string) => {
@@ -361,6 +383,18 @@ export function SendForm({ onScanQR }: SendFormProps) {
           </p>
         )}
       </div>
+
+      {/* Transaction Modal */}
+      <TransactionModal
+        isOpen={showTxModal}
+        onClose={closeTxModal}
+        status={txStatus}
+        txHash={txHash}
+        amount={amount}
+        token={selectedToken.symbol}
+        recipient={recipient.slice(0, 6) + '...' + recipient.slice(-4)}
+        errorMessage="Network congestion. Please try again later."
+      />
     </motion.div>
   );
 }
