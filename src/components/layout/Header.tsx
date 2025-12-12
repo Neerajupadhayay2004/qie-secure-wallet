@@ -1,9 +1,10 @@
 import { motion } from 'framer-motion';
-import { Bell, Link2, Copy, Check } from 'lucide-react';
+import { Link2, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { mockWalletAddress } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
+import { NotificationBell } from '@/components/dashboard/NotificationBell';
 
 interface HeaderProps {
   isConnected: boolean;
@@ -35,16 +36,17 @@ export function Header({ isConnected, onConnect }: HeaderProps) {
         
         <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
           <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
+            <motion.span 
+              className="w-2 h-2 rounded-full bg-success"
+              animate={{ scale: [1, 1.2, 1], opacity: [1, 0.7, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            />
             QIE Network
           </span>
         </div>
 
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
-          </Button>
+          <NotificationBell />
 
           {isConnected ? (
             <motion.div
