@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.python-api]
 verify_jwt = false
+
+[functions.oracle]
+verify_jwt = false

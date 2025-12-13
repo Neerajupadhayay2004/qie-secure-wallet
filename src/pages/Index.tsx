@@ -22,6 +22,8 @@ import { WelcomeBanner } from '@/components/dashboard/WelcomeBanner';
 import { SettingsPage } from '@/components/settings/SettingsPage';
 import { SwapPage } from '@/components/swap/SwapPage';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
+import LivePriceWidget from '@/components/oracle/LivePriceWidget';
+import MarketSignalsWidget from '@/components/oracle/MarketSignalsWidget';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -54,6 +56,10 @@ const Index = () => {
           <div className="space-y-6 animate-slide-up">
             <WelcomeBanner onGetStarted={() => handleTabChange('send')} />
             <MarketTicker />
+            <div className="grid lg:grid-cols-2 gap-6">
+              <LivePriceWidget />
+              <MarketSignalsWidget />
+            </div>
             <LiveStats />
             <PortfolioCard />
             <QuickActions onAction={handleQuickAction} />

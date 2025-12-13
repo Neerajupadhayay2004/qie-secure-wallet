@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import { Copy, Check, Share2, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { mockWalletAddress, mockTokens } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
+import LivePriceWidget from '@/components/oracle/LivePriceWidget';
 
 export function ReceiveQR() {
   const [selectedToken, setSelectedToken] = useState(mockTokens[0]);
@@ -69,8 +70,11 @@ export function ReceiveQR() {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-lg mx-auto"
+      className="max-w-lg mx-auto space-y-4"
     >
+      {/* Live Price Widget */}
+      <LivePriceWidget compact showGas={false} />
+      
       <div className="rounded-2xl bg-card border border-border/50 p-6">
         <h2 className="text-xl font-semibold mb-6 text-center">Receive Crypto</h2>
 

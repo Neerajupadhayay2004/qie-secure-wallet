@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Send, AlertTriangle, Users, QrCode, Bell } from 'lucide-react';
+import { Send, AlertTriangle, Users, QrCode, Bell, Fuel, TrendingUp, TrendingDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { mockTokens, mockContacts } from '@/data/mockData';
@@ -8,6 +8,8 @@ import { useToast } from '@/hooks/use-toast';
 import { checkFraud } from '@/services/aiService';
 import { notifyTransaction, notifySecurityAlert } from '@/services/notificationService';
 import { TransactionModal, TransactionStatus } from '@/components/modals/TransactionModal';
+import { fetchQIEPrice, fetchGasEstimate, QIEPrice, GasEstimate, calculateTransactionFee, convertQIEToINR } from '@/services/oracleService';
+import AddressReputationBadge from '@/components/oracle/AddressReputationBadge';
 
 interface SendFormProps {
   onScanQR: () => void;
@@ -31,10 +33,28 @@ export function SendForm({ onScanQR }: SendFormProps) {
   const [showTxModal, setShowTxModal] = useState(false);
   const [txStatus, setTxStatus] = useState<TransactionStatus>('pending');
   const [txHash, setTxHash] = useState('');
+  const [qiePrice, setQiePrice] = useState<QIEPrice | null>(null);
+  const [gasData, setGasData] = useState<GasEstimate | null>(null);
+  const [selectedGasSpeed, setSelectedGasSpeed] = useState<'slow' | 'standard' | 'fast'>('standard');
   const { toast } = useToast();
 
-  const gasEstimate = 0.002;
-  const gasFeeUSD = 0.15;
+  // Fetch oracle data on mount
+  useEffect(() => {
+    const fetchOracleData = async () => {
+      const [price, gas] = await Promise.all([
+        fetchQIEPrice(),
+        fetchGasEstimate(),
+      ]);
+      if (price) setQiePrice(price);
+      if (gas) setGasData(gas);
+    };
+    fetchOracleData();
+    const interval = setInterval(fetchOracleData, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const gasEstimate = gasData ? calculateTransactionFee(gasData, selectedGasSpeed) : 0.002;
+  const gasFeeINR = qiePrice ? convertQIEToINR(gasEstimate, qiePrice) : 0.15;
 
   const analyzeRisk = async () => {
     if (!recipient || recipient.length < 10) return;
@@ -300,12 +320,24 @@ export function SendForm({ onScanQR }: SendFormProps) {
               MAX
             </button>
           </div>
-          {amount && (
-            <p className="text-sm text-muted-foreground mt-1">
-              ≈ ${(parseFloat(amount) * (selectedToken.usdValue / selectedToken.balance)).toFixed(2)} USD
-            </p>
+          {amount && qiePrice && (
+            <div className="flex items-center justify-between mt-2 text-sm">
+              <span className="text-muted-foreground">
+                ≈ ₹{convertQIEToINR(parseFloat(amount) || 0, qiePrice).toLocaleString()} INR
+              </span>
+              <span className="text-muted-foreground">
+                ${((parseFloat(amount) || 0) * qiePrice.usd).toFixed(2)} USD
+              </span>
+            </div>
           )}
         </div>
+
+        {/* Address Reputation */}
+        {recipient && recipient.length >= 10 && (
+          <div className="mb-4">
+            <AddressReputationBadge address={recipient} />
+          </div>
+        )}
 
         {/* AI Risk Score */}
         {(isAnalyzing || fraudResult !== null) && (
@@ -344,15 +376,63 @@ export function SendForm({ onScanQR }: SendFormProps) {
           </motion.div>
         )}
 
-        {/* Gas Fee */}
-        <div className="mb-6 p-4 rounded-xl bg-secondary/30 border border-border/50">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-muted-foreground">Estimated Gas Fee</span>
-            <span className="text-sm font-medium">{gasEstimate} QIE</span>
+        {/* Live QIE Price */}
+        {qiePrice && (
+          <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                  <span className="text-xs font-bold text-primary">QIE</span>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">₹{qiePrice.inr.toFixed(2)}</p>
+                  <p className="text-xs text-muted-foreground">${qiePrice.usd.toFixed(4)} USD</p>
+                </div>
+              </div>
+              <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
+                qiePrice.change24h >= 0 ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'
+              }`}>
+                {qiePrice.change24h >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                {Math.abs(qiePrice.change24h).toFixed(2)}%
+              </div>
+            </div>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">≈ USD</span>
-            <span className="text-sm text-muted-foreground">${gasFeeUSD}</span>
+        )}
+
+        {/* Gas Fee with Speed Selection */}
+        <div className="mb-6 p-4 rounded-xl bg-secondary/30 border border-border/50 space-y-3">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Fuel className="w-4 h-4" />
+            <span className="text-sm">Gas Fee</span>
+          </div>
+          
+          {gasData && (
+            <div className="grid grid-cols-3 gap-2">
+              {(['slow', 'standard', 'fast'] as const).map((speed) => (
+                <button
+                  key={speed}
+                  onClick={() => setSelectedGasSpeed(speed)}
+                  className={`p-2 rounded-lg text-center transition-all ${
+                    selectedGasSpeed === speed
+                      ? 'bg-primary/20 border border-primary'
+                      : 'bg-muted/50 border border-transparent hover:border-primary/30'
+                  }`}
+                >
+                  <p className="text-xs text-muted-foreground capitalize">
+                    {speed === 'slow' ? '🐢' : speed === 'standard' ? '⚡' : '🚀'} {speed}
+                  </p>
+                  <p className="text-sm font-semibold">{gasData[speed]} Gwei</p>
+                </button>
+              ))}
+            </div>
+          )}
+          
+          <div className="flex items-center justify-between pt-2 border-t border-border/30">
+            <span className="text-sm text-muted-foreground">Estimated Fee</span>
+            <div className="text-right">
+              <span className="text-sm font-medium">{gasEstimate.toFixed(6)} QIE</span>
+              <p className="text-xs text-muted-foreground">≈ ₹{gasFeeINR.toFixed(2)}</p>
+            </div>
           </div>
         </div>
 
