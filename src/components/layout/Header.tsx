@@ -30,9 +30,9 @@ export function Header({ isConnected, onConnect }: HeaderProps) {
   };
 
   return (
-    <header className="h-16 border-b border-border/50 bg-card/30 backdrop-blur-xl sticky top-0 z-30">
+    <header className="h-16 border-b border-border/50 bg-card/80 backdrop-blur-xl sticky top-0 z-40">
       <div className="h-full px-4 lg:px-6 flex items-center justify-between">
-        <div className="lg:hidden w-10" /> {/* Spacer for mobile menu button */}
+        <div className="lg:hidden w-12" /> {/* Spacer for mobile menu button */}
         
         <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
           <span className="flex items-center gap-1.5">
