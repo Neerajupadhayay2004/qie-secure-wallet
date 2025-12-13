@@ -16,7 +16,7 @@ The platform aims to provide borderless financial solutions such as:
 * 📱 Modern UI using React + Tailwind + shadcn-ui
 * ⚙️ Fast Vite-powered build setup
 
-Live Website: **[https://qie.netlify.app/](https://qie.netlify.app/)**
+Live Website: **[https://qie01.netlify.app/](https://qie01.netlify.app/)**
 
 ---
 
