@@ -24,6 +24,7 @@ import { SwapPage } from '@/components/swap/SwapPage';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 import LivePriceWidget from '@/components/oracle/LivePriceWidget';
 import MarketSignalsWidget from '@/components/oracle/MarketSignalsWidget';
+import PriceAlertManager from '@/components/oracle/PriceAlertManager';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -53,17 +54,18 @@ const Index = () => {
     switch (activeTab) {
       case 'dashboard':
         return (
-          <div className="space-y-6 animate-slide-up">
+          <div className="space-y-4 md:space-y-6 animate-slide-up">
             <WelcomeBanner onGetStarted={() => handleTabChange('send')} />
             <MarketTicker />
-            <div className="grid lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
               <LivePriceWidget />
               <MarketSignalsWidget />
             </div>
+            <PriceAlertManager />
             <LiveStats />
             <PortfolioCard />
             <QuickActions onAction={handleQuickAction} />
-            <div className="grid lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
               <TokenList />
               <PortfolioChart />
             </div>
@@ -100,19 +102,20 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background relative">
+    <div className="min-h-screen bg-background relative overflow-x-hidden">
       <FloatingParticles />
       <Sidebar activeTab={activeTab} onTabChange={handleTabChange} />
       
-      <div className="lg:pl-64 relative z-10">
+      <div className="lg:pl-64 relative z-20">
         <Header isConnected={isConnected} onConnect={handleConnect} />
         
-        <main className="p-4 lg:p-6">
+        <main className="p-3 pt-16 lg:pt-4 lg:p-6 min-h-screen">
           <motion.div
             key={activeTab}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
+            className="max-w-7xl mx-auto"
           >
             {renderContent()}
           </motion.div>

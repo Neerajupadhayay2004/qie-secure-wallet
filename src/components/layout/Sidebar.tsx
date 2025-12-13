@@ -105,13 +105,13 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
       {/* Mobile Menu Button */}
       <button
         onClick={() => setIsMobileOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-secondary/80 backdrop-blur-lg border border-border/50"
+        className="lg:hidden fixed top-4 left-4 z-[60] p-2 rounded-lg bg-secondary/80 backdrop-blur-lg border border-border/50"
       >
         <Menu className="w-5 h-5" />
       </button>
 
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex w-64 h-screen bg-card/50 backdrop-blur-xl border-r border-border/50 flex-col fixed left-0 top-0">
+      <aside className="hidden lg:flex w-64 h-screen bg-card/50 backdrop-blur-xl border-r border-border/50 flex-col fixed left-0 top-0 z-30">
         <NavContent />
       </aside>
 
@@ -124,14 +124,14 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMobileOpen(false)}
-              className="lg:hidden fixed inset-0 bg-background/80 backdrop-blur-sm z-40"
+              className="lg:hidden fixed inset-0 bg-background/80 backdrop-blur-sm z-[70]"
             />
             <motion.aside
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="lg:hidden fixed left-0 top-0 w-72 h-screen bg-card border-r border-border/50 z-50 flex flex-col"
+              className="lg:hidden fixed left-0 top-0 w-72 h-screen bg-card border-r border-border/50 z-[80] flex flex-col"
             >
               <button
                 onClick={() => setIsMobileOpen(false)}
